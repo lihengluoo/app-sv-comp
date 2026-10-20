@@ -12,28 +12,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <pthread.h>
-#include <stdint.h>
-extern void abort(void);
-void *safe_calloc(size_t num, size_t size) {
-  void *p = calloc(num, size);
-  if (p == 0) {
-    abort();
-  }
-  return p;
-}
-
-void *safe_malloc(size_t size) {
-  void *p = malloc(size);
-  if (p == 0) {
-    abort();
-  }
-  return p;
-}
-
-void assume_abort_if_not(int cond) {
-  if(!cond) {abort();}
-}
-extern int __VERIFIER_nondet_int();
 
 int threads_total;
 int threads_alive = 0;
@@ -71,15 +49,11 @@ void *cleaner(void *arg) {
 }
 
 int main() {
-  threads_total = __VERIFIER_nondet_int();
-  assume_abort_if_not(threads_total >= 1);
+  threads_total = rand();
 
-  assume_abort_if_not(threads_total <= SIZE_MAX / sizeof(pthread_t));
-  tids = safe_malloc(threads_total * sizeof(pthread_t));
-  assume_abort_if_not(threads_total <= SIZE_MAX / sizeof(bool));
-  datas = safe_calloc(threads_total, sizeof(bool));
-  assume_abort_if_not(threads_total <= SIZE_MAX / sizeof(pthread_mutex_t));
-  datas_mutex = safe_malloc(threads_total * sizeof(pthread_mutex_t));
+  tids = malloc(threads_total * sizeof(pthread_t));
+  datas = calloc(threads_total, sizeof(bool));
+  datas_mutex = malloc(threads_total * sizeof(pthread_mutex_t));
 
   for (int i = 0; i < threads_total; i++)
     pthread_mutex_init(&datas_mutex[i], NULL);

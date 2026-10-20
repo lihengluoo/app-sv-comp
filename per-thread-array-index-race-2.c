@@ -8,37 +8,20 @@
 // Per-thread array index passed via argument.
 #include <stdlib.h>
 #include <pthread.h>
-#include <stdint.h>
-extern void abort(void);
-void *safe_malloc(size_t size) {
-  void *p = malloc(size);
-  if (p == 0) {
-    abort();
-  }
-  return p;
-}
-
-void assume_abort_if_not(int cond) {
-  if(!cond) {abort();}
-}
-extern int __VERIFIER_nondet_int();
 
 int *datas;
 
 void *thread(void *arg) {
   int i = (int)arg;
-  datas[i] = __VERIFIER_nondet_int(); // RACE!
+  datas[i] = rand(); // RACE!
   return NULL;
 }
 
 int main() {
-  int threads_total = __VERIFIER_nondet_int();
-  assume_abort_if_not(threads_total >= 0);
+  int threads_total = rand();
 
-  assume_abort_if_not(threads_total <= SIZE_MAX / sizeof(pthread_t));
-  pthread_t *tids = safe_malloc(threads_total * sizeof(pthread_t));
-  assume_abort_if_not(threads_total <= SIZE_MAX / sizeof(int));
-  datas = safe_malloc(threads_total * sizeof(int));
+  pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
+  datas = malloc(threads_total * sizeof(int));
 
   // create threads
   for (int i = 0; i < threads_total; i++) {

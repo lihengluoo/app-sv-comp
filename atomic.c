@@ -8,21 +8,7 @@
 // Race-free due to GCC atomic operation.
 // Extracted from concrat/klib.
 #include <stdlib.h>
-void *safe_malloc(size_t size) {
-  void *p = malloc(size);
-  if (p == 0) {
-    abort();
-  }
-  return p;
-}
-
 #include <pthread.h>
-#include <stdint.h>
-extern void abort(void);
-void assume_abort_if_not(int cond) {
-  if(!cond) {abort();}
-}
-extern int __VERIFIER_nondet_int();
 
 int data;
 
@@ -32,10 +18,9 @@ void *thread(void *arg) {
 }
 
 int main() {
-  int threads_total = __VERIFIER_nondet_int();
-  assume_abort_if_not(threads_total >= 0 && threads_total <= SIZE_MAX / sizeof(pthread_t));
+  int threads_total = rand();
 
-  pthread_t *tids = safe_malloc(threads_total * sizeof(pthread_t));
+  pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
 
   // create threads
   for (int i = 0; i < threads_total; i++) {

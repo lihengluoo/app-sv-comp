@@ -7,13 +7,9 @@
 
 // Thread pool joining via threads alive counter incremented inside of thread.
 // Extracted from concrat/C-Thread-Pool.
+#include <stdlib.h>
 #include <stdbool.h>
 #include <pthread.h>
-extern void abort(void);
-void assume_abort_if_not(int cond) {
-  if(!cond) {abort();}
-}
-extern int __VERIFIER_nondet_int();
 
 int threads_alive = 0;
 pthread_mutex_t threads_alive_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -29,7 +25,7 @@ void *thread(void *arg) {
   pthread_mutex_unlock(&threads_alive_mutex);
 
   pthread_mutex_lock(&data_mutex);
-  data = __VERIFIER_nondet_int(); // NORACE
+  data = rand(); // NORACE
   pthread_mutex_unlock(&data_mutex);
 
   pthread_mutex_lock(&threads_alive_mutex);
@@ -40,8 +36,7 @@ void *thread(void *arg) {
 }
 
 int main() {
-  int threads_total = __VERIFIER_nondet_int();
-  assume_abort_if_not(threads_total >= 0);
+  int threads_total = rand();
 
   // create threads
   for (int i = 0; i < threads_total; i++) {

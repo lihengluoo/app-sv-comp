@@ -23,20 +23,6 @@
 */
 #include <stdlib.h>
 #include <pthread.h>
-#include <stdint.h>
-extern void abort(void);
-void *safe_malloc(size_t size) {
-  void *p = malloc(size);
-  if (p == 0) {
-    abort();
-  }
-  return p;
-}
-
-void assume_abort_if_not(int cond) {
-  if(!cond) {abort();}
-}
-extern int __VERIFIER_nondet_int();
 
 int threads_total;
 pthread_t *tids;
@@ -47,7 +33,7 @@ pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
 void *thread(void *arg) {
   int i = (int)arg;
   pthread_mutex_lock(&data_mutex);
-  data = __VERIFIER_nondet_int(); // RACE!
+  data = rand(); // RACE!
   pthread_mutex_unlock(&data_mutex);
 
   // join threads thread-recursively like binomial heap
@@ -66,11 +52,9 @@ void *thread(void *arg) {
 }
 
 int main() {
-  threads_total = __VERIFIER_nondet_int();
-  assume_abort_if_not(threads_total >= 2);
+  threads_total = rand();
 
-  assume_abort_if_not(threads_total <= SIZE_MAX / sizeof(pthread_t));
-  tids = safe_malloc(threads_total * sizeof(pthread_t));
+  tids = malloc(threads_total * sizeof(pthread_t));
 
   // create threads
   // From original fzy: These must be created last-to-first to avoid a race condition when fanning in
