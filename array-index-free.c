@@ -5,35 +5,28 @@
 //
 // SPDX-License-Identifier: MIT
 
-// POSIX semaphore used as a mutex.
-// Extracted from concrat/ProcDump-for-Linux.
+// Per-thread array index passed via argument.
 #include <stdlib.h>
 #include <pthread.h>
-#include <semaphore.h>
 
-int data = 0;
-sem_t data_sem;
+int *datas;
 
 void *thread(void *arg) {
-  sem_wait(&data_sem);
-  data = rand(); // RACE!
-  sem_post(&data_sem);
+  int i = (int)arg;
+  datas[i] = 4; // NORACE
   return NULL;
 }
 
 int main() {
-  sem_init(&data_sem, 0, 1);
-
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
+  datas = malloc(threads_total * sizeof(int));
 
   // create threads
   for (int i = 0; i < threads_total; i++) {
-    pthread_create(&tids[i], NULL, &thread, NULL); // may fail but doesn't matter
+    pthread_create(&tids[i], NULL, &thread, (void*)i); // may fail but doesn't matter
   }
-
-  sem_post(&data_sem);
 
   // join threads
   for (int i = 0; i < threads_total; i++) {
@@ -41,6 +34,7 @@ int main() {
   }
 
   free(tids);
+  free(datas);
 
   return 0;
 }

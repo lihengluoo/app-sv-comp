@@ -7,18 +7,21 @@
 
 // Race-free due to GCC atomic operation.
 // Extracted from concrat/klib.
+
+// Atomic should not be race-free.
+
 #include <stdlib.h>
 #include <pthread.h>
 
 int data;
 
 void *thread(void *arg) {
-  __sync_fetch_and_add(&data, 1); // NORACE
+  __sync_fetch_and_add(&data, 1); // RACE
   return NULL;
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
 

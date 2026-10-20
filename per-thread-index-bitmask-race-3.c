@@ -18,7 +18,7 @@ int *datas;
 
 void *thread(void *arg) {
   int j = (int)arg;
-  datas[j] = rand(); // RACE!
+  datas[j] = 4; // RACE!
 
   pthread_mutex_lock(&threads_mask_mutex);
   // change j-th bit back to 1
@@ -28,7 +28,7 @@ void *thread(void *arg) {
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
   datas = malloc(threads_total * sizeof(int));

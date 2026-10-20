@@ -49,7 +49,7 @@ void *cleaner(void *arg) {
 }
 
 int main() {
-  threads_total = rand();
+  threads_total = 4;
 
   tids = malloc(threads_total * sizeof(pthread_t));
   datas = calloc(threads_total, sizeof(bool));

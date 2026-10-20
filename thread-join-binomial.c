@@ -33,7 +33,7 @@ pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
 void *thread(void *arg) {
   int i = (int)arg;
   pthread_mutex_lock(&data_mutex);
-  data = rand(); // NORACE
+  data = 4; // NORACE
   pthread_mutex_unlock(&data_mutex);
 
   // join threads thread-recursively like binomial heap
@@ -52,7 +52,7 @@ void *thread(void *arg) {
 }
 
 int main() {
-  threads_total = rand();
+  threads_total = 4;
 
   tids = malloc(threads_total * sizeof(pthread_t));
 

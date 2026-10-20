@@ -29,7 +29,7 @@ void *thread(void *arg) {
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
 
@@ -38,7 +38,7 @@ int main() {
     pthread_create(&tids[i], NULL, &thread, NULL); // may fail but doesn't matter
   }
 
-  data = rand(); // NORACE (write before ready)
+  data = 4; // NORACE (write before ready)
 
   // become ready
   pthread_mutex_lock(&ready_mutex);

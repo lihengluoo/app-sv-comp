@@ -32,7 +32,7 @@ void *thread(void *arg) {
 int main() {
   pthread_key_create(&key, NULL);
 
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
 

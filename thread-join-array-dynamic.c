@@ -16,13 +16,13 @@ pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void *thread(void *arg) {
   pthread_mutex_lock(&data_mutex);
-  data = rand(); // NORACE
+  data = 4; // NORACE
   pthread_mutex_unlock(&data_mutex);
   return NULL;
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
 

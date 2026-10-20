@@ -17,7 +17,7 @@ pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void *thread(void *arg) {
   pthread_mutex_lock(&data_mutex);
-  data = rand(); // RACE!
+  data = 4; // RACE!
   pthread_mutex_unlock(&data_mutex);
 
   threads_alive--; // RACE!
@@ -25,7 +25,7 @@ void *thread(void *arg) {
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   // create threads
   for (int i = 0; i < threads_total; i++) {

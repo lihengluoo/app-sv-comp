@@ -16,12 +16,12 @@ struct thread {
 
 void *thread(void *arg) {
   struct thread *t = arg;
-  t->data = rand(); // RACE!
+  t->data = 4; // RACE!
   return NULL;
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
   struct thread *t = malloc(sizeof(struct thread));

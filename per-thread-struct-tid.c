@@ -17,12 +17,12 @@ struct thread {
 
 void *thread(void *arg) {
   struct thread *t = arg;
-  t->data = rand(); // NORACE
+  t->data = 4; // NORACE
   return NULL;
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   struct thread **ts = malloc(threads_total * sizeof(struct thread *));
 

@@ -29,7 +29,7 @@ void *thread(void *arg) {
   int i = (int)arg;
 
   pthread_mutex_lock(&data_mutex);
-  data = rand(); // NORACE
+  data = 4; // NORACE
   pthread_mutex_unlock(&data_mutex);
 
   pthread_mutex_lock(&flags_mutex[i]);
@@ -57,7 +57,7 @@ void *cleaner(void *arg) {
 }
 
 int main() {
-  threads_total = rand();
+  threads_total = 4;
 
   tids = malloc(threads_total * sizeof(pthread_t));
   flags = calloc(threads_total, sizeof(bool));

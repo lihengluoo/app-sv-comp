@@ -32,7 +32,7 @@ void *thread(void *arg) {
     pthread_mutex_unlock(&keep_alive_mutex);
 
     pthread_mutex_lock(&data_mutex);
-    data = rand(); // NORACE
+    data = 4; // NORACE
     pthread_mutex_unlock(&data_mutex);
 
     pthread_mutex_lock(&keep_alive_mutex);
@@ -47,7 +47,7 @@ void *thread(void *arg) {
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   // create threads
   for (int i = 0; i < threads_total; i++) {

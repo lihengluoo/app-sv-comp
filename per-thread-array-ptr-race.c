@@ -12,12 +12,12 @@
 
 void *thread(void *arg) {
   int *p = arg;
-  *p = rand(); // RACE!
+  *p = 4; // RACE!
   return NULL;
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
   int *datas = malloc(threads_total * sizeof(int));

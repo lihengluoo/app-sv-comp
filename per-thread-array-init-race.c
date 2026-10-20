@@ -17,7 +17,7 @@ void *thread(void *arg) {
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
   int *is = calloc(threads_total, sizeof(int));

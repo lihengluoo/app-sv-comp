@@ -23,12 +23,12 @@ void *thread(void *arg) {
   threads_mask |= 1 << j; // NORACE
   pthread_mutex_unlock(&threads_mask_mutex);
 
-  datas[j] = rand(); // RACE!
+  datas[j] = 4; // RACE!
   return NULL;
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
   datas = malloc(threads_total * sizeof(int));

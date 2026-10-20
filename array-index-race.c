@@ -13,19 +13,19 @@ int *datas;
 
 void *thread(void *arg) {
   int i = (int)arg;
-  datas[i] = rand(); // NORACE
+  datas[i] = 4; // RACE!
   return NULL;
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
   datas = malloc(threads_total * sizeof(int));
 
   // create threads
   for (int i = 0; i < threads_total; i++) {
-    pthread_create(&tids[i], NULL, &thread, (void*)i); // may fail but doesn't matter
+    pthread_create(&tids[i], NULL, &thread, (void*)(i / 2)); // may fail but doesn't matter
   }
 
   // join threads

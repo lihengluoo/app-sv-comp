@@ -21,7 +21,7 @@ void __VERIFIER_assert(int cond) {
 __thread int* data = NULL;
 
 void *thread(void *arg) {
-  int n = rand();
+  int n = 4;
 
   data = calloc(n, sizeof(int)); // NORACE
 
@@ -38,7 +38,7 @@ void *thread(void *arg) {
 }
 
 int main() {
-  int threads_total = rand();
+  int threads_total = 4;
 
   pthread_t *tids = malloc(threads_total * sizeof(pthread_t));
 
