@@ -9,7 +9,7 @@
 # build; override them on the command line or environment when that is wrong.
 # IR capture itself always goes through the repository-wide build.sh.
 
-CAPTURE ?= ../../../scripts/applications/build.sh
+CAPTURE ?= ../../../scripts/build.sh
 CLANG ?= clang
 WLLVM ?= wllvm
 COMPILER ?= ../../../compiler/build/delphi-compiler
