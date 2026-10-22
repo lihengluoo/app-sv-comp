@@ -10,12 +10,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <assert.h>
-void reach_error() { assert(0); }
 void __VERIFIER_assert(int cond) {
-  if (!(cond)) {
-    ERROR: {reach_error();abort();}
-  }
-  return;
+  assert(cond);
 }
 
 __thread int* data = NULL;
