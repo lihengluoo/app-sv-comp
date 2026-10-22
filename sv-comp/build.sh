@@ -1,23 +1,37 @@
 #!/usr/bin/env bash
-# Capture each standalone micro-app before LLVM can discard unused accesses.
+# Capture each standalone benchmark before LLVM can discard unused accesses.
+#
+# Usage: build.sh [--clang PATH] [--wllvm PATH] [--output-dir DIR] [SOURCE...]
+# Without SOURCE arguments every *.c file next to this script is captured.
+# Explicit SOURCE arguments make this the general C-to-IR capture entry for
+# any benchmark or test source, independent of this suite's directory.
 set -euo pipefail
 
 app_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 clang=clang
 wllvm="${WLLVM_CC:-wllvm}"
-output_dir="$app_dir/ir"
+output_dir="$app_dir/build/ir"
+src_args=()
 
 fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 print_usage() {
-    printf 'Usage: %s [--clang PATH] [--wllvm PATH] [--output-dir DIR]\n' "$0"
-    printf 'Defaults: clang and wllvm on PATH (or WLLVM_CC); output: %s/ir\n' "$app_dir"
+    printf 'Usage: %s [--clang PATH] [--wllvm PATH] [--output-dir DIR] [SOURCE...]\n' "$0"
+    printf 'Defaults: clang and wllvm on PATH (or WLLVM_CC); sources: every *.c next\n'
+    printf 'to the script; output: %s/build/ir\n' "$app_dir"
 }
 
 find_executable() {
     local path
     path="$(command -v -- "$1")" || fail "Executable not found: $1"
     [[ -f "$path" && -x "$path" ]] || fail "Not an executable file: $path"
+    printf '%s/%s\n' "$(cd -- "$(dirname -- "$path")" && pwd)" "$(basename -- "$path")"
+}
+
+resolve_src() {
+    local path="$1"
+    [[ -f "$path" ]] || fail "Source file not found: $path"
+    [[ "$path" == *.c ]] || fail "Unsupported source (expected .c): $path"
     printf '%s/%s\n' "$(cd -- "$(dirname -- "$path")" && pwd)" "$(basename -- "$path")"
 }
 
@@ -33,7 +47,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         -h|--help) print_usage; exit 0 ;;
-        *) fail "Unknown option: $1" ;;
+        -*) fail "Unknown option: $1" ;;
+        *) src_args+=("$(resolve_src "$1")"); shift ;;
     esac
 done
 
@@ -47,7 +62,11 @@ for tool in "$llvm_dir/llvm-link" "$llvm_dir/opt" "$wllvm_dir/extract-bc"; do
 done
 
 shopt -s nullglob
-src_paths=("$app_dir"/*.c)
+if [[ ${#src_args[@]} -gt 0 ]]; then
+    src_paths=("${src_args[@]}")
+else
+    src_paths=("$app_dir"/*.c)
+fi
 [[ ${#src_paths[@]} -gt 0 ]] || fail "No C benchmarks found in $app_dir"
 
 mkdir -p -- "$output_dir"

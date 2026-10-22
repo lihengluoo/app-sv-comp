@@ -1,0 +1,223 @@
+{
+  "upstream_commit": "06ef45a2a186536d2e35f3d0f550eeeb70c1af5f",
+  "upstream_directory": "c/pthread-race-challenges",
+  "provenance": "Race verdicts from the upstream no-data-race property, verified against the pinned YAML and C blob hashes in the 2026-10-20 run (result.md). Renamed files keep their upstream name in upstream_file; race_free null marks a locally added benchmark with no upstream verdict.",
+  "files": {
+    "array-index-free.c": {
+      "race_free": true,
+      "upstream_file": "per-thread-array-index.c"
+    },
+    "array-index-race.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-array-index-race-2.c"
+    },
+    "atomic.c": {
+      "race_free": true,
+      "upstream_file": "atomic-gcc.c"
+    },
+    "cond-handoff.c": {
+      "race_free": null,
+      "upstream_file": null
+    },
+    "per-thread-array-init-race.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-array-init-race.c"
+    },
+    "per-thread-array-init.c": {
+      "race_free": true,
+      "upstream_file": "per-thread-array-init.c"
+    },
+    "per-thread-array-join-counter-2.c": {
+      "race_free": true,
+      "upstream_file": "per-thread-array-join-counter-2.c"
+    },
+    "per-thread-array-join-counter-race-2.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-array-join-counter-race-2.c"
+    },
+    "per-thread-array-join-counter-race-3.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-array-join-counter-race-3.c"
+    },
+    "per-thread-array-join-counter-race-4.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-array-join-counter-race-4.c"
+    },
+    "per-thread-array-join-counter-race.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-array-join-counter-race.c"
+    },
+    "per-thread-array-join-counter.c": {
+      "race_free": true,
+      "upstream_file": "per-thread-array-join-counter.c"
+    },
+    "per-thread-array-ptr-race.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-array-ptr-race.c"
+    },
+    "per-thread-array-ptr.c": {
+      "race_free": true,
+      "upstream_file": "per-thread-array-ptr.c"
+    },
+    "per-thread-index-inc-race-2.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-index-inc-race-2.c"
+    },
+    "per-thread-index-inc-race.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-index-inc-race.c"
+    },
+    "per-thread-index-inc.c": {
+      "race_free": true,
+      "upstream_file": "per-thread-index-inc.c"
+    },
+    "per-thread-struct-in-array-race.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-struct-in-array-race.c"
+    },
+    "per-thread-struct-in-array.c": {
+      "race_free": true,
+      "upstream_file": "per-thread-struct-in-array.c"
+    },
+    "per-thread-struct-race.c": {
+      "race_free": false,
+      "upstream_file": "per-thread-struct-race.c"
+    },
+    "per-thread-struct-tid-join.c": {
+      "race_free": true,
+      "upstream_file": "per-thread-struct-tid-join.c"
+    },
+    "per-thread-struct-tid.c": {
+      "race_free": true,
+      "upstream_file": "per-thread-struct-tid.c"
+    },
+    "per-thread-struct.c": {
+      "race_free": true,
+      "upstream_file": "per-thread-struct.c"
+    },
+    "thread-join-array-const-race-2.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-array-const-race-2.c"
+    },
+    "thread-join-array-const-race-3.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-array-const-race-3.c"
+    },
+    "thread-join-array-const-race.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-array-const-race.c"
+    },
+    "thread-join-array-const.c": {
+      "race_free": true,
+      "upstream_file": "thread-join-array-const.c"
+    },
+    "thread-join-array-dynamic-race-2.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-array-dynamic-race-2.c"
+    },
+    "thread-join-array-dynamic-race-3.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-array-dynamic-race-3.c"
+    },
+    "thread-join-array-dynamic-race.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-array-dynamic-race.c"
+    },
+    "thread-join-array-dynamic.c": {
+      "race_free": true,
+      "upstream_file": "thread-join-array-dynamic.c"
+    },
+    "thread-join-binomial-race-2.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-binomial-race-2.c"
+    },
+    "thread-join-binomial-race-3.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-binomial-race-3.c"
+    },
+    "thread-join-binomial-race.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-binomial-race.c"
+    },
+    "thread-join-binomial.c": {
+      "race_free": true,
+      "upstream_file": "thread-join-binomial.c"
+    },
+    "thread-join-counter-inner-2.c": {
+      "race_free": true,
+      "upstream_file": "thread-join-counter-inner-2.c"
+    },
+    "thread-join-counter-inner-3.c": {
+      "race_free": true,
+      "upstream_file": "thread-join-counter-inner-3.c"
+    },
+    "thread-join-counter-inner-race-2.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-counter-inner-race-2.c"
+    },
+    "thread-join-counter-inner-race-3.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-counter-inner-race-3.c"
+    },
+    "thread-join-counter-inner-race-4.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-counter-inner-race-4.c"
+    },
+    "thread-join-counter-inner-race-5.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-counter-inner-race-5.c"
+    },
+    "thread-join-counter-inner-race.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-counter-inner-race.c"
+    },
+    "thread-join-counter-inner.c": {
+      "race_free": true,
+      "upstream_file": "thread-join-counter-inner.c"
+    },
+    "thread-join-counter-outer-race-2.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-counter-outer-race-2.c"
+    },
+    "thread-join-counter-outer-race-3.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-counter-outer-race-3.c"
+    },
+    "thread-join-counter-outer-race-4.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-counter-outer-race-4.c"
+    },
+    "thread-join-counter-outer-race.c": {
+      "race_free": false,
+      "upstream_file": "thread-join-counter-outer-race.c"
+    },
+    "thread-join-counter-outer.c": {
+      "race_free": true,
+      "upstream_file": "thread-join-counter-outer.c"
+    },
+    "thread-local-value-cond.c": {
+      "race_free": true,
+      "upstream_file": "thread-local-value-cond.c"
+    },
+    "thread-local-value-dynamic.c": {
+      "race_free": true,
+      "upstream_file": "thread-local-value-dynamic.c"
+    },
+    "thread-local-value-race.c": {
+      "race_free": false,
+      "upstream_file": "thread-local-value-race.c"
+    },
+    "thread-local-value.c": {
+      "race_free": true,
+      "upstream_file": "thread-local-value.c"
+    },
+    "value-barrier-race.c": {
+      "race_free": false,
+      "upstream_file": "value-barrier-race.c"
+    },
+    "value-barrier.c": {
+      "race_free": true,
+      "upstream_file": "value-barrier.c"
+    }
+  }
+}
