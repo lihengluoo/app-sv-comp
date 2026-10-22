@@ -1,0 +1,47 @@
+# Build and run the micro-gemm concurrency-pattern suite.
+#
+#   make ir       capture every *.c to build/ir/*.ll (wllvm whole-program flow)
+#   make native   compile and run every benchmark natively (self-check)
+#   make test     build the IR, run the compiler on each benchmark and score
+#                 the results against the verdict table in run_suite.sh
+#   make clean    remove the build and results artifacts
+#
+# CLANG, WLLVM and COMPILER default to tools on PATH and the sibling compiler
+# build; override them on the command line or environment when that is wrong.
+# IR capture itself always goes through the repository-wide build.sh.
+
+CAPTURE ?= ../../../scripts/build.sh
+CLANG ?= clang
+WLLVM ?= wllvm
+COMPILER ?= ../../../compiler/build/delphi-compiler
+CC ?= cc
+PYTHON ?= python3
+
+IR_DIR ?= build/ir
+
+C_SOURCES := $(sort $(wildcard *.c))
+IR_FILES := $(patsubst %.c,$(IR_DIR)/%.ll,$(C_SOURCES))
+
+.PHONY: ir native test clean
+
+ir: $(IR_FILES)
+
+native:
+	@mkdir -p build/bin
+	@for src in $(C_SOURCES); do \
+	    stem=$${src%.c}; \
+	    $(CC) -std=c11 -O2 -pthread -Wall "$$src" -o build/bin/$$stem || exit 1; \
+	    ./build/bin/$$stem || exit 1; \
+	done
+
+test: ir
+	./run_suite.sh --compiler $(COMPILER) --ir-dir $(IR_DIR)
+
+$(IR_DIR)/%.ll: %.c $(CAPTURE) | $(IR_DIR)
+	$(CAPTURE) --clang $(CLANG) --wllvm $(WLLVM) --output-dir $(IR_DIR) $<
+
+$(IR_DIR):
+	mkdir -p $@
+
+clean:
+	rm -rf build results

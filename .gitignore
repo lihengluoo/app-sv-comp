@@ -2,3 +2,7 @@
 /sv-comp/build/
 /sv-comp/results/
 /sv-comp/__pycache__/
+
+/micro-gemm/build/
+/micro-gemm/results/
+/micro-gemm/__pycache__/
