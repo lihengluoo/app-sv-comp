@@ -1,3 +1,4 @@
 # Captured IR and per-run benchmark artifacts stay out of Git.
 /sv-comp/build/
 /sv-comp/results/
+/sv-comp/__pycache__/
