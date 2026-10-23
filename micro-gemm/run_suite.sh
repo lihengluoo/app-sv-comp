@@ -15,8 +15,9 @@ compiler=../../../compiler/build/delphi-compiler
 ir_dir=build/ir
 symbex_timeout_ms=20
 
-# Ground truth per benchmark.  DRF: the pattern is race free by construction.
-# RACE: the *_race.c mutations carry a real data race.
+# Ground truth per dual pair.  DRF: the pattern is race free by
+# construction.  RACE: the *_race.c mutations carry a real data race.
+# Every pair must appear on both lists.
 expect_drf="create_join_plain \
 job_descriptor_copy \
 partition_columns \
@@ -29,15 +30,31 @@ sequential_calls \
 concurrent_calls \
 init_once_mutex \
 init_once_spinlock \
-atomic_thread_count"
+atomic_thread_count \
+mode_dispatch \
+partition_columns_simd \
+caller_first_slice_simd \
+worker_scratch_pack_simd \
+tls_thread_slots"
 
-expect_race="partition_columns_race \
+expect_race="create_join_plain_race \
 job_descriptor_copy_race \
+partition_columns_race \
+partition_block_tails_race \
+caller_first_slice_race \
 join_indexed_prefix_race \
 worker_private_scratch_race \
 shared_readonly_inputs_race \
+sequential_calls_race \
+concurrent_calls_race \
 init_once_mutex_race \
-concurrent_calls_race"
+init_once_spinlock_race \
+atomic_thread_count_race \
+mode_dispatch_race \
+partition_columns_simd_race \
+caller_first_slice_simd_race \
+worker_scratch_pack_simd_race \
+tls_thread_slots_race"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in

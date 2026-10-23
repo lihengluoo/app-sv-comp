@@ -2,21 +2,24 @@
  *
  * Mutation of worker_private_scratch.c: the caller allocates a single
  * scratch buffer and hands the same pointer to every worker descriptor,
- * so all workers pack into the same memory concurrently.
+ * so all workers pack the B column into the same memory and compute from
+ * it concurrently.
  *
- * Expected: UNRESOLVED (real race).
+ * Dual: worker_private_scratch.c.  Expected: UNRESOLVED (real race).
  */
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 
-enum { rows = 64, columns = 64, depth = 48, thread_count = 4 };
+enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4,
+       alpha_scale = 2, beta_scale = 5 };
 
-static int8_t input_a[rows * depth];
-static int8_t input_b[depth * columns];
-static int32_t output[rows * columns];
+static int8_t input_a[rows_m * depth_k];
+static int8_t input_b[cols_n * depth_k];
+static int32_t output_c[rows_m * cols_n];
 
 struct job_plan {
     int8_t *shared_packed;
@@ -29,15 +32,17 @@ static struct job_plan plans[thread_count];
 static void *plan_worker(void *arg) {
     struct job_plan *plan = arg;
 
-    for (int64_t col = plan->column_from; col < plan->column_to; col++) {
-        for (int64_t k = 0; k < depth; k++)
-            plan->shared_packed[k] = input_b[k * columns + col];  // RACE! one buffer, all workers
+    for (int64_t n = plan->column_from; n < plan->column_to; n++) {
+        memcpy(plan->shared_packed, &input_b[n * depth_k], (size_t)depth_k);  // RACE! one buffer
 
-        for (int64_t row = 0; row < rows; row++) {
+        for (int64_t m = 0; m < rows_m; m++)
+            output_c[m * cols_n + n] *= beta_scale;
+        for (int64_t m = 0; m < rows_m; m++) {
             int32_t sum = 0;
-            for (int64_t k = 0; k < depth; k++)
-                sum += input_a[row * depth + k] * plan->shared_packed[k];
-            output[row * columns + col] = sum;
+
+            for (int64_t k = 0; k < depth_k; k++)
+                sum += input_a[m * depth_k + k] * plan->shared_packed[k];     // RACE! one buffer
+            output_c[m * cols_n + n] += alpha_scale * sum;
         }
     }
     return NULL;
@@ -45,22 +50,23 @@ static void *plan_worker(void *arg) {
 
 int main(void) {
     pthread_t threads[thread_count];
-    int8_t *shared_packed = aligned_alloc(64, (size_t)depth);
-    const int64_t width = columns / thread_count;
+    int8_t *shared_packed = aligned_alloc(64, (size_t)depth_k);
+    const int64_t width = cols_n / thread_count;
 
     if (shared_packed == NULL) return 1;
 
-    for (int64_t r = 0; r < rows; r++)
-        for (int64_t k = 0; k < depth; k++)
-            input_a[r * depth + k] = (int8_t)(((r * 7 + k * 3) % 11) - 5);
-    for (int64_t k = 0; k < depth; k++)
-        for (int64_t c = 0; c < columns; c++)
-            input_b[k * columns + c] = (int8_t)(((k * 5 + c * 3) % 13) - 6);
+    for (int64_t m = 0; m < rows_m; m++)
+        for (int64_t k = 0; k < depth_k; k++)
+            input_a[m * depth_k + k] = (int8_t)(((m * 7 + k * 3) % 11) - 5);
+    for (int64_t n = 0; n < cols_n; n++)
+        for (int64_t k = 0; k < depth_k; k++)
+            input_b[n * depth_k + k] = (int8_t)(((n * 5 + k * 3) % 13) - 6);
+    memset(output_c, 1, sizeof output_c);
 
     for (int64_t i = 0; i < thread_count; i++) {
         plans[i].shared_packed = shared_packed;
         plans[i].column_from = i * width;
-        plans[i].column_to = (i == thread_count - 1) ? columns : (i + 1) * width;
+        plans[i].column_to = (i == thread_count - 1) ? cols_n : (i + 1) * width;
     }
 
     for (int64_t i = 0; i < thread_count; i++)

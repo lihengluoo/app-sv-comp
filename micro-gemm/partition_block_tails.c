@@ -2,23 +2,26 @@
  *
  * Distilled from applications/gemm: level3.c walks each worker's N range
  * in min_jj column chunks and the k dimension in chunks with remainder
- * tails (the kernels handle bk & 3 remainders), so stores stay disjoint
- * through nested block loops and min-step bounds.
+ * tails, so stores stay disjoint through nested block loops and
+ * min-step bounds.  The block ends use the min idiom that lowers to
+ * llvm.umin exactly like level3.c's min_jj bound.
  *
- * Expected: DRF.
+ * Dual: partition_block_tails_race.c.  Expected: DRF.
  */
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <pthread.h>
 
-enum { rows = 64, columns = 61, depth = 46, thread_count = 4,
-       column_block = 7, depth_block = 4 };
+enum { rows_m = 64, cols_n = 61, depth_k = 61, thread_count = 4,
+       column_block = 7, depth_block = 4,
+       alpha_scale = 2, beta_scale = 5 };
 
-static int8_t input_a[rows * depth];
-static int8_t input_b[depth * columns];
-static int32_t output[rows * columns];
-static int32_t ref_output[rows * columns];
+static int8_t input_a[rows_m * depth_k];
+static int8_t input_b[cols_n * depth_k];
+static int32_t output_c[rows_m * cols_n];
+static int32_t ref_c[rows_m * cols_n];
 
 struct column_range {
     int64_t from;
@@ -28,53 +31,58 @@ struct column_range {
 static struct column_range ranges[thread_count];
 
 static void fill_inputs(void) {
-    for (int64_t r = 0; r < rows; r++)
-        for (int64_t k = 0; k < depth; k++)
-            input_a[r * depth + k] = (int8_t)(((r * 7 + k * 3) % 11) - 5);
-    for (int64_t k = 0; k < depth; k++)
-        for (int64_t c = 0; c < columns; c++)
-            input_b[k * columns + c] = (int8_t)(((k * 5 + c * 3) % 13) - 6);
+    for (int64_t m = 0; m < rows_m; m++)
+        for (int64_t k = 0; k < depth_k; k++)
+            input_a[m * depth_k + k] = (int8_t)(((m * 7 + k * 3) % 11) - 5);
+    for (int64_t n = 0; n < cols_n; n++)
+        for (int64_t k = 0; k < depth_k; k++)
+            input_b[n * depth_k + k] = (int8_t)(((n * 5 + k * 3) % 13) - 6);
 }
 
-static void compute_block(int64_t col_from, int64_t col_to) {
-    for (int64_t col = col_from; col < col_to; col++)
-        for (int64_t row = 0; row < rows; row++) {
-            int32_t sum = 0;
+/* One output column with the k dimension walked in chunks plus a
+   remainder tail, the kernel-side loop shape of level3.c. */
+static void gemm_column_blocked(int32_t *dst, int64_t n) {
+    for (int64_t m = 0; m < rows_m; m++)
+        dst[m * cols_n + n] *= beta_scale;
+    for (int64_t m = 0; m < rows_m; m++) {
+        int32_t sum = 0;
 
-            for (int64_t k = 0; k < depth / depth_block; k++)
-                for (int64_t step = 0; step < depth_block; step++) {
-                    int64_t kk = k * depth_block + step;
-                    sum += input_a[row * depth + kk] * input_b[kk * columns + col];
-                }
-            for (int64_t kk = depth - depth % depth_block; kk < depth; kk++)
-                sum += input_a[row * depth + kk] * input_b[kk * columns + col];
+        for (int64_t chunk = 0; chunk < depth_k / depth_block; chunk++)
+            for (int64_t step = 0; step < depth_block; step++) {
+                int64_t k = chunk * depth_block + step;
 
-            output[row * columns + col] = sum;
-        }
+                sum += input_a[m * depth_k + k] * input_b[n * depth_k + k];
+            }
+        for (int64_t k = depth_k - depth_k % depth_block; k < depth_k; k++)
+            sum += input_a[m * depth_k + k] * input_b[n * depth_k + k];
+        dst[m * cols_n + n] += alpha_scale * sum;
+    }
 }
 
 static void compute_columns(int64_t from, int64_t to) {
-    int64_t full_blocks = (to - from) / column_block;
+    for (int64_t block_from = from; block_from < to; block_from += column_block) {
+        int64_t block_to = block_from + column_block;
 
-    for (int64_t block = 0; block < full_blocks; block++) {
-        int64_t block_from = from + block * column_block;
-        compute_block(block_from, block_from + column_block);
+        if (block_to > to) block_to = to; /* min idiom -> llvm.umin */
+        for (int64_t n = block_from; n < block_to; n++)
+            gemm_column_blocked(output_c, n);
     }
-    compute_block(from + full_blocks * column_block, to);
 }
 
 static void *range_worker(void *arg) {
     struct column_range *range = arg;
+
     compute_columns(range->from, range->to);
     return NULL;
 }
 
 int main(void) {
     pthread_t threads[thread_count];
-    int64_t remaining = columns;
+    int64_t remaining = cols_n;
     int64_t next_from = 0;
 
     fill_inputs();
+    memset(output_c, 1, sizeof output_c);
 
     for (int64_t i = 0; i < thread_count; i++) {
         int64_t width = (remaining + thread_count - i - 1) / (thread_count - i);
@@ -90,16 +98,18 @@ int main(void) {
     for (int64_t i = 0; i < thread_count; i++)
         if (pthread_join(threads[i], NULL) != 0) return 1;
 
-    for (int64_t col = 0; col < columns; col++)
-        for (int64_t row = 0; row < rows; row++) {
+    memset(ref_c, 1, sizeof ref_c);
+    for (int64_t n = 0; n < cols_n; n++)
+        for (int64_t m = 0; m < rows_m; m++) {
             int32_t sum = 0;
-            for (int64_t k = 0; k < depth; k++)
-                sum += input_a[row * depth + k] * input_b[k * columns + col];
-            ref_output[row * columns + col] = sum;
+
+            for (int64_t k = 0; k < depth_k; k++)
+                sum += input_a[m * depth_k + k] * input_b[n * depth_k + k];
+            ref_c[m * cols_n + n] = ref_c[m * cols_n + n] * beta_scale + alpha_scale * sum;
         }
 
-    for (int64_t i = 0; i < rows * columns; i++)
-        if (output[i] != ref_output[i]) {
+    for (int64_t i = 0; i < rows_m * cols_n; i++)
+        if (output_c[i] != ref_c[i]) {
             printf("FAIL partition_block_tails\n");
             return 1;
         }

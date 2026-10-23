@@ -3,59 +3,67 @@
  * Distilled from applications/gemm: the check harness calls cblas_i8gemm
  * repeatedly; every call re-partitions the whole C matrix across fresh
  * workers.  The join at the end of one call orders the writes of the
- * next call, so accumulation across calls stays race-free.
+ * next call.  Call 1 uses beta = 0 (pure overwrite, the first-writer
+ * kernel path); call 2 accumulates with beta = 1.
  *
- * Expected: DRF.
+ * Dual: sequential_calls_race.c.  Expected: DRF.
  */
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 
-enum { rows = 64, columns = 64, depth = 48, thread_count = 4, call_count = 3 };
+enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4, call_count = 2 };
 
-static int8_t input_a[rows * depth];
-static int8_t input_b[depth * columns];
-static int32_t output[rows * columns];
-static int32_t ref_output[rows * columns];
+static int8_t input_a[rows_m * depth_k];
+static int8_t input_b[cols_n * depth_k];
+static int32_t output_c[rows_m * cols_n];
+static int32_t ref_c[rows_m * cols_n];
 
 struct column_range {
     int64_t from;
     int64_t to;
-    int32_t scale;
+    int32_t alpha;
+    int32_t beta;
 };
 
 static struct column_range ranges[thread_count];
 
 static void fill_inputs(void) {
-    for (int64_t r = 0; r < rows; r++)
-        for (int64_t k = 0; k < depth; k++)
-            input_a[r * depth + k] = (int8_t)(((r * 7 + k * 3) % 11) - 5);
-    for (int64_t k = 0; k < depth; k++)
-        for (int64_t c = 0; c < columns; c++)
-            input_b[k * columns + c] = (int8_t)(((k * 5 + c * 3) % 13) - 6);
+    for (int64_t m = 0; m < rows_m; m++)
+        for (int64_t k = 0; k < depth_k; k++)
+            input_a[m * depth_k + k] = (int8_t)(((m * 7 + k * 3) % 11) - 5);
+    for (int64_t n = 0; n < cols_n; n++)
+        for (int64_t k = 0; k < depth_k; k++)
+            input_b[n * depth_k + k] = (int8_t)(((n * 5 + k * 3) % 13) - 6);
 }
 
-static void compute_columns(int64_t from, int64_t to, int32_t scale) {
-    for (int64_t col = from; col < to; col++)
-        for (int64_t row = 0; row < rows; row++) {
-            int32_t sum = 0;
-            for (int64_t k = 0; k < depth; k++)
-                sum += input_a[row * depth + k] * input_b[k * columns + col];
-            output[row * columns + col] += scale * sum;
-        }
+static void gemm_column(int64_t n, int32_t alpha, int32_t beta) {
+    for (int64_t m = 0; m < rows_m; m++) {
+        int32_t sum = 0;
+
+        for (int64_t k = 0; k < depth_k; k++)
+            sum += input_a[m * depth_k + k] * input_b[n * depth_k + k];
+        if (beta != 0)
+            output_c[m * cols_n + n] = output_c[m * cols_n + n] * beta + alpha * sum;
+        else
+            output_c[m * cols_n + n] = alpha * sum;
+    }
 }
 
 static void *range_worker(void *arg) {
     struct column_range *range = arg;
-    compute_columns(range->from, range->to, (int32_t)range->scale);
+
+    for (int64_t n = range->from; n < range->to; n++)
+        gemm_column(n, range->alpha, range->beta);
     return NULL;
 }
 
-static void run_partitioned_call(int32_t scale) {
+static void run_partitioned_call(int32_t alpha, int32_t beta) {
     pthread_t threads[thread_count];
-    int64_t remaining = columns;
+    int64_t remaining = cols_n;
     int64_t next_from = 0;
 
     for (int64_t i = 0; i < thread_count; i++) {
@@ -63,7 +71,8 @@ static void run_partitioned_call(int32_t scale) {
 
         ranges[i].from = next_from;
         ranges[i].to = next_from + width;
-        ranges[i].scale = scale;
+        ranges[i].alpha = alpha;
+        ranges[i].beta = beta;
         next_from += width;
         remaining -= width;
     }
@@ -76,20 +85,25 @@ static void run_partitioned_call(int32_t scale) {
 
 int main(void) {
     fill_inputs();
+    memset(output_c, 1, sizeof output_c);
 
-    for (int32_t call = 1; call <= call_count; call++)
-        run_partitioned_call(call);
+    /* Call 1 overwrites (beta = 0), call 2 accumulates (beta = 1). */
+    run_partitioned_call(2, 0);
+    run_partitioned_call(3, 1);
 
-    for (int64_t col = 0; col < columns; col++)
-        for (int64_t row = 0; row < rows; row++) {
+    memset(ref_c, 1, sizeof ref_c);
+    for (int64_t n = 0; n < cols_n; n++)
+        for (int64_t m = 0; m < rows_m; m++) {
             int32_t sum = 0;
-            for (int64_t k = 0; k < depth; k++)
-                sum += input_a[row * depth + k] * input_b[k * columns + col];
-            ref_output[row * columns + col] = sum * (1 + 2 + 3);
+
+            for (int64_t k = 0; k < depth_k; k++)
+                sum += input_a[m * depth_k + k] * input_b[n * depth_k + k];
+            ref_c[m * cols_n + n] = 2 * sum;
+            ref_c[m * cols_n + n] = ref_c[m * cols_n + n] + 3 * sum;
         }
 
-    for (int64_t i = 0; i < rows * columns; i++)
-        if (output[i] != ref_output[i]) {
+    for (int64_t i = 0; i < rows_m * cols_n; i++)
+        if (output_c[i] != ref_c[i]) {
             printf("FAIL sequential_calls\n");
             return 1;
         }

@@ -1,0 +1,11 @@
+{
+  "provenance": "Race verdicts by construction: list-walk-free.c walks the chain under the list mutex, list-walk-race.c is the same walk without the lock.",
+  "files": {
+    "list-walk-free.c": {
+      "race_free": true
+    },
+    "list-walk-race.c": {
+      "race_free": false
+    }
+  }
+}

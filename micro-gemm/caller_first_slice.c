@@ -3,21 +3,23 @@
  * Distilled from applications/gemm: exec_blas creates one pthread per
  * queued job, runs queue node 0 on the calling thread in parallel with
  * them, and joins.  The caller participates in the same disjoint
- * partition, so its own writes need no synchronization beyond join.
+ * partition, so its own gemm slice needs no synchronization beyond join.
  *
- * Expected: DRF.
+ * Dual: caller_first_slice_race.c.  Expected: DRF.
  */
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <pthread.h>
 
-enum { rows = 64, columns = 64, depth = 48, thread_count = 4 };
+enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4,
+       alpha_scale = 2, beta_scale = 5 };
 
-static int8_t input_a[rows * depth];
-static int8_t input_b[depth * columns];
-static int32_t output[rows * columns];
-static int32_t ref_output[rows * columns];
+static int8_t input_a[rows_m * depth_k];
+static int8_t input_b[cols_n * depth_k];
+static int32_t output_c[rows_m * cols_n];
+static int32_t ref_c[rows_m * cols_n];
 
 struct column_range {
     int64_t from;
@@ -27,36 +29,41 @@ struct column_range {
 static struct column_range ranges[thread_count];
 
 static void fill_inputs(void) {
-    for (int64_t r = 0; r < rows; r++)
-        for (int64_t k = 0; k < depth; k++)
-            input_a[r * depth + k] = (int8_t)(((r * 7 + k * 3) % 11) - 5);
-    for (int64_t k = 0; k < depth; k++)
-        for (int64_t c = 0; c < columns; c++)
-            input_b[k * columns + c] = (int8_t)(((k * 5 + c * 3) % 13) - 6);
+    for (int64_t m = 0; m < rows_m; m++)
+        for (int64_t k = 0; k < depth_k; k++)
+            input_a[m * depth_k + k] = (int8_t)(((m * 7 + k * 3) % 11) - 5);
+    for (int64_t n = 0; n < cols_n; n++)
+        for (int64_t k = 0; k < depth_k; k++)
+            input_b[n * depth_k + k] = (int8_t)(((n * 5 + k * 3) % 13) - 6);
 }
 
-static void compute_columns(int64_t from, int64_t to) {
-    for (int64_t col = from; col < to; col++)
-        for (int64_t row = 0; row < rows; row++) {
-            int32_t sum = 0;
-            for (int64_t k = 0; k < depth; k++)
-                sum += input_a[row * depth + k] * input_b[k * columns + col];
-            output[row * columns + col] = sum;
-        }
+static void gemm_column(int64_t n) {
+    for (int64_t m = 0; m < rows_m; m++)
+        output_c[m * cols_n + n] *= beta_scale;
+    for (int64_t m = 0; m < rows_m; m++) {
+        int32_t sum = 0;
+
+        for (int64_t k = 0; k < depth_k; k++)
+            sum += input_a[m * depth_k + k] * input_b[n * depth_k + k];
+        output_c[m * cols_n + n] += alpha_scale * sum;
+    }
 }
 
 static void *range_worker(void *arg) {
     struct column_range *range = arg;
-    compute_columns(range->from, range->to);
+
+    for (int64_t n = range->from; n < range->to; n++)
+        gemm_column(n);
     return NULL;
 }
 
 int main(void) {
     pthread_t threads[thread_count - 1];
-    int64_t remaining = columns;
+    int64_t remaining = cols_n;
     int64_t next_from = 0;
 
     fill_inputs();
+    memset(output_c, 1, sizeof output_c);
 
     for (int64_t i = 0; i < thread_count; i++) {
         int64_t width = (remaining + thread_count - i - 1) / (thread_count - i);
@@ -70,21 +77,24 @@ int main(void) {
     for (int64_t i = 1; i < thread_count; i++)
         if (pthread_create(&threads[i - 1], NULL, range_worker, &ranges[i]) != 0) return 1;
 
-    compute_columns(ranges[0].from, ranges[0].to);
+    for (int64_t n = ranges[0].from; n < ranges[0].to; n++)
+        gemm_column(n);
 
     for (int64_t i = 1; i < thread_count; i++)
         if (pthread_join(threads[i - 1], NULL) != 0) return 1;
 
-    for (int64_t col = 0; col < columns; col++)
-        for (int64_t row = 0; row < rows; row++) {
+    memset(ref_c, 1, sizeof ref_c);
+    for (int64_t n = 0; n < cols_n; n++)
+        for (int64_t m = 0; m < rows_m; m++) {
             int32_t sum = 0;
-            for (int64_t k = 0; k < depth; k++)
-                sum += input_a[row * depth + k] * input_b[k * columns + col];
-            ref_output[row * columns + col] = sum;
+
+            for (int64_t k = 0; k < depth_k; k++)
+                sum += input_a[m * depth_k + k] * input_b[n * depth_k + k];
+            ref_c[m * cols_n + n] = ref_c[m * cols_n + n] * beta_scale + alpha_scale * sum;
         }
 
-    for (int64_t i = 0; i < rows * columns; i++)
-        if (output[i] != ref_output[i]) {
+    for (int64_t i = 0; i < rows_m * cols_n; i++)
+        if (output_c[i] != ref_c[i]) {
             printf("FAIL caller_first_slice\n");
             return 1;
         }

@@ -6,3 +6,6 @@
 /micro-gemm/build/
 /micro-gemm/results/
 /micro-gemm/__pycache__/
+
+/micro-kv/build/
+/micro-kv/results/

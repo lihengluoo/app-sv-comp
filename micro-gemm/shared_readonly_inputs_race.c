@@ -1,20 +1,22 @@
 /* micro-gemm RACE: a worker writes a supposedly read-only input.
  *
  * Mutation of shared_readonly_inputs.c: worker 0 writes an input element
- * while the other workers read the whole input array.
+ * while the other workers read the whole input arrays.
  *
- * Expected: UNRESOLVED (real race).
+ * Dual: shared_readonly_inputs.c.  Expected: UNRESOLVED (real race).
  */
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <pthread.h>
 
-enum { rows = 64, columns = 64, depth = 48, thread_count = 4 };
+enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4,
+       alpha_scale = 2, beta_scale = 5 };
 
-static int8_t input_a[rows * depth];
-static int8_t input_b[depth * columns];
-static int32_t output[rows * columns];
+static int8_t input_a[rows_m * depth_k];
+static int8_t input_b[cols_n * depth_k];
+static int32_t output_c[rows_m * cols_n];
 
 struct column_range {
     int64_t from;
@@ -27,29 +29,34 @@ static void *range_worker(void *arg) {
     struct column_range *range = arg;
 
     if (range->from == 0)
-        input_a[0] = 1;                                          // RACE! writes shared input
+        input_a[0] = 1;                                           // RACE! writes shared input
 
-    for (int64_t col = range->from; col < range->to; col++)
-        for (int64_t row = 0; row < rows; row++) {
+    for (int64_t n = range->from; n < range->to; n++) {
+        for (int64_t m = 0; m < rows_m; m++)
+            output_c[m * cols_n + n] *= beta_scale;
+        for (int64_t m = 0; m < rows_m; m++) {
             int32_t sum = 0;
-            for (int64_t k = 0; k < depth; k++)
-                sum += input_a[row * depth + k] * input_b[k * columns + col];
-            output[row * columns + col] = sum;
+
+            for (int64_t k = 0; k < depth_k; k++)
+                sum += input_a[m * depth_k + k] * input_b[n * depth_k + k];   // RACE! concurrent read
+            output_c[m * cols_n + n] += alpha_scale * sum;
         }
+    }
     return NULL;
 }
 
 int main(void) {
     pthread_t threads[thread_count];
-    int64_t remaining = columns;
+    int64_t remaining = cols_n;
     int64_t next_from = 0;
 
-    for (int64_t r = 0; r < rows; r++)
-        for (int64_t k = 0; k < depth; k++)
-            input_a[r * depth + k] = (int8_t)(((r * 7 + k * 3) % 11) - 5);
-    for (int64_t k = 0; k < depth; k++)
-        for (int64_t c = 0; c < columns; c++)
-            input_b[k * columns + c] = (int8_t)(((k * 5 + c * 3) % 13) - 6);
+    for (int64_t m = 0; m < rows_m; m++)
+        for (int64_t k = 0; k < depth_k; k++)
+            input_a[m * depth_k + k] = (int8_t)(((m * 7 + k * 3) % 11) - 5);
+    for (int64_t n = 0; n < cols_n; n++)
+        for (int64_t k = 0; k < depth_k; k++)
+            input_b[n * depth_k + k] = (int8_t)(((n * 5 + k * 3) % 13) - 6);
+    memset(output_c, 1, sizeof output_c);
 
     for (int64_t i = 0; i < thread_count; i++) {
         int64_t width = (remaining + thread_count - i - 1) / (thread_count - i);
