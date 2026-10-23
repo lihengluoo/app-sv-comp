@@ -24,7 +24,7 @@ SUITE_DIR = Path(__file__).resolve().parent
 
 # The compiler prints this block before the optional unresolved-pair report.
 SUMMARY_RE = re.compile(
-    r"^Result: (DRF|UNRESOLVED)\n"
+    r"^Result: (DRF|UNRESOLVED)(?:; join success assumed)?\n"
     r"^Contexts: (\d+); accesses: (\d+)\n"
     r"^Pairs: (\d+) unresolved / (\d+) examined\n"
     r"(?:^Symbolic budget: .+\n)?"
