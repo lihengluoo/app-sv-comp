@@ -15,13 +15,17 @@
 #include <string.h>
 #include <pthread.h>
 
-enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4,
-       alpha_scale = 2, beta_scale = 5 };
+#define rows_m 64
+#define cols_n 64
+#define depth_k 64
+#define thread_count 4
+#define alpha_scale 2
+#define beta_scale 5
 
-static int8_t input_a[rows_m * depth_k];
-static int8_t input_b[cols_n * depth_k];
-static int32_t output_c[rows_m * cols_n];
-static int32_t ref_c[rows_m * cols_n];
+int8_t input_a[rows_m * depth_k];
+int8_t input_b[cols_n * depth_k];
+int32_t output_c[rows_m * cols_n];
+int32_t ref_c[rows_m * cols_n];
 
 struct job_plan {
     int32_t *output;
@@ -31,9 +35,9 @@ struct job_plan {
     int32_t beta;
 };
 
-static struct job_plan plans[thread_count];
+struct job_plan plans[thread_count];
 
-static void fill_inputs(void) {
+void fill_inputs(void) {
     for (int64_t m = 0; m < rows_m; m++)
         for (int64_t k = 0; k < depth_k; k++)
             input_a[m * depth_k + k] = (int8_t)(((m * 7 + k * 3) % 11) - 5);
@@ -42,7 +46,7 @@ static void fill_inputs(void) {
             input_b[n * depth_k + k] = (int8_t)(((n * 5 + k * 3) % 13) - 6);
 }
 
-static void gemm_column(int32_t *dst, int64_t n, int32_t alpha, int32_t beta) {
+void gemm_column(int32_t *dst, int64_t n, int32_t alpha, int32_t beta) {
     for (int64_t m = 0; m < rows_m; m++)
         dst[m * cols_n + n] *= beta;
     for (int64_t m = 0; m < rows_m; m++) {
@@ -54,7 +58,7 @@ static void gemm_column(int32_t *dst, int64_t n, int32_t alpha, int32_t beta) {
     }
 }
 
-static void *plan_worker(void *arg) {
+void *plan_worker(void *arg) {
     struct job_plan plan = *(const struct job_plan *)arg;
 
     for (int64_t n = plan.column_from; n < plan.column_to; n++)

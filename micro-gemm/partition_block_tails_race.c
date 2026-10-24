@@ -12,22 +12,27 @@
 #include <string.h>
 #include <pthread.h>
 
-enum { rows_m = 64, cols_n = 61, depth_k = 61, thread_count = 4,
-       column_block = 7, depth_block = 4,
-       alpha_scale = 2, beta_scale = 5 };
+#define rows_m 64
+#define cols_n 61
+#define depth_k 61
+#define thread_count 4
+#define column_block 7
+#define depth_block 4
+#define alpha_scale 2
+#define beta_scale 5
 
-static int8_t input_a[rows_m * depth_k];
-static int8_t input_b[cols_n * depth_k];
-static int32_t output_c[rows_m * cols_n];
+int8_t input_a[rows_m * depth_k];
+int8_t input_b[cols_n * depth_k];
+int32_t output_c[rows_m * cols_n];
 
 struct column_range {
     int64_t from;
     int64_t to;
 };
 
-static struct column_range ranges[thread_count];
+struct column_range ranges[thread_count];
 
-static void gemm_column_blocked(int64_t n) {
+void gemm_column_blocked(int64_t n) {
     for (int64_t m = 0; m < rows_m; m++)
         output_c[m * cols_n + n] *= beta_scale;
     for (int64_t m = 0; m < rows_m; m++) {
@@ -45,7 +50,7 @@ static void gemm_column_blocked(int64_t n) {
     }
 }
 
-static void compute_columns(int64_t from, int64_t to) {
+void compute_columns(int64_t from, int64_t to) {
     for (int64_t block_from = from; block_from < to; block_from += column_block) {
         int64_t block_to = block_from + column_block;
 
@@ -55,7 +60,7 @@ static void compute_columns(int64_t from, int64_t to) {
     }
 }
 
-static void *range_worker(void *arg) {
+void *range_worker(void *arg) {
     struct column_range *range = arg;
 
     compute_columns(range->from, range->to);

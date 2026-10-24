@@ -14,12 +14,16 @@
 #include <pthread.h>
 #include <immintrin.h>
 
-enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4,
-       alpha_scale = 2, beta_scale = 5 };
+#define rows_m 64
+#define cols_n 64
+#define depth_k 64
+#define thread_count 4
+#define alpha_scale 2
+#define beta_scale 5
 
-static int8_t input_a[rows_m * depth_k];
-static int8_t input_b[cols_n * depth_k];
-static int32_t output_c[rows_m * cols_n];
+int8_t input_a[rows_m * depth_k];
+int8_t input_b[cols_n * depth_k];
+int32_t output_c[rows_m * cols_n];
 
 struct job_plan {
     int8_t *shared_packed;
@@ -27,10 +31,10 @@ struct job_plan {
     int64_t column_to;
 };
 
-static struct job_plan plans[thread_count];
+struct job_plan plans[thread_count];
 
 __attribute__((target("avx512f,avx512bw,avx512vl,avx512vnni")))
-static int32_t simd_dot_packed(const int8_t *a_row, const int8_t *packed_column) {
+int32_t simd_dot_packed(const int8_t *a_row, const int8_t *packed_column) {
     __m512i a_low = _mm512_cvtepi8_epi16(_mm256_loadu_si256((const __m256i *)a_row));
     __m512i b_low = _mm512_cvtepi8_epi16(_mm256_loadu_si256((const __m256i *)packed_column));
     __m512i a_high = _mm512_cvtepi8_epi16(_mm256_loadu_si256((const __m256i *)(a_row + 32)));
@@ -41,7 +45,7 @@ static int32_t simd_dot_packed(const int8_t *a_row, const int8_t *packed_column)
     return _mm512_reduce_add_epi32(acc);
 }
 
-static void *plan_worker(void *arg) {
+void *plan_worker(void *arg) {
     struct job_plan *plan = arg;
 
     for (int64_t n = plan->column_from; n < plan->column_to; n++) {

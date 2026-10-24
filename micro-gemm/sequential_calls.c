@@ -15,12 +15,16 @@
 #include <string.h>
 #include <pthread.h>
 
-enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4, call_count = 2 };
+#define rows_m 64
+#define cols_n 64
+#define depth_k 64
+#define thread_count 4
+#define call_count 2
 
-static int8_t input_a[rows_m * depth_k];
-static int8_t input_b[cols_n * depth_k];
-static int32_t output_c[rows_m * cols_n];
-static int32_t ref_c[rows_m * cols_n];
+int8_t input_a[rows_m * depth_k];
+int8_t input_b[cols_n * depth_k];
+int32_t output_c[rows_m * cols_n];
+int32_t ref_c[rows_m * cols_n];
 
 struct column_range {
     int64_t from;
@@ -29,9 +33,9 @@ struct column_range {
     int32_t beta;
 };
 
-static struct column_range ranges[thread_count];
+struct column_range ranges[thread_count];
 
-static void fill_inputs(void) {
+void fill_inputs(void) {
     for (int64_t m = 0; m < rows_m; m++)
         for (int64_t k = 0; k < depth_k; k++)
             input_a[m * depth_k + k] = (int8_t)(((m * 7 + k * 3) % 11) - 5);
@@ -40,7 +44,7 @@ static void fill_inputs(void) {
             input_b[n * depth_k + k] = (int8_t)(((n * 5 + k * 3) % 13) - 6);
 }
 
-static void gemm_column(int64_t n, int32_t alpha, int32_t beta) {
+void gemm_column(int64_t n, int32_t alpha, int32_t beta) {
     for (int64_t m = 0; m < rows_m; m++) {
         int32_t sum = 0;
 
@@ -53,7 +57,7 @@ static void gemm_column(int64_t n, int32_t alpha, int32_t beta) {
     }
 }
 
-static void *range_worker(void *arg) {
+void *range_worker(void *arg) {
     struct column_range *range = arg;
 
     for (int64_t n = range->from; n < range->to; n++)
@@ -61,7 +65,7 @@ static void *range_worker(void *arg) {
     return NULL;
 }
 
-static void run_partitioned_call(int32_t alpha, int32_t beta) {
+void run_partitioned_call(int32_t alpha, int32_t beta) {
     pthread_t threads[thread_count];
     int64_t remaining = cols_n;
     int64_t next_from = 0;

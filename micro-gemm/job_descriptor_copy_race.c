@@ -12,12 +12,16 @@
 #include <string.h>
 #include <pthread.h>
 
-enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4,
-       alpha_scale = 2, beta_scale = 5 };
+#define rows_m 64
+#define cols_n 64
+#define depth_k 64
+#define thread_count 4
+#define alpha_scale 2
+#define beta_scale 5
 
-static int8_t input_a[rows_m * depth_k];
-static int8_t input_b[cols_n * depth_k];
-static int32_t output_c[rows_m * cols_n];
+int8_t input_a[rows_m * depth_k];
+int8_t input_b[cols_n * depth_k];
+int32_t output_c[rows_m * cols_n];
 
 struct job_plan {
     int32_t *output;
@@ -27,9 +31,9 @@ struct job_plan {
     int32_t beta;
 };
 
-static struct job_plan plans[thread_count];
+struct job_plan plans[thread_count];
 
-static void *plan_worker(void *arg) {
+void *plan_worker(void *arg) {
     struct job_plan *plan = arg;
 
     for (int64_t n = plan->column_from; n < plan->column_to; n++) {  // RACE! parent mutates

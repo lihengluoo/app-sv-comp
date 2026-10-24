@@ -1,7 +1,7 @@
 # micro-kv: linked-list micro-benchmark
 
 Two sv-comp-style benchmarks distilled from
-[`applications/kv`](../../../applications/kv): `list-walk-free.c` walks a
+[`applications/kvs`](../../../applications/kvs): `list-walk-free.c` walks a
 malloc'd four-node chain under the list mutex (race-free by
 construction), and `list-walk-race.c` is the same program minus the
 lock/unlock pair (racy).  Sizes are plain locals, all state travels

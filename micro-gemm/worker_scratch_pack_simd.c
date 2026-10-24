@@ -15,23 +15,27 @@
 #include <pthread.h>
 #include <immintrin.h>
 
-enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4,
-       alpha_scale = 2, beta_scale = 5 };
+#define rows_m 64
+#define cols_n 64
+#define depth_k 64
+#define thread_count 4
+#define alpha_scale 2
+#define beta_scale 5
 
-static int8_t input_a[rows_m * depth_k];
-static int8_t input_b[cols_n * depth_k];
-static int32_t output_c[rows_m * cols_n];
-static int32_t ref_c[rows_m * cols_n];
+int8_t input_a[rows_m * depth_k];
+int8_t input_b[cols_n * depth_k];
+int32_t output_c[rows_m * cols_n];
+int32_t ref_c[rows_m * cols_n];
 
 struct column_range {
     int64_t from;
     int64_t to;
 };
 
-static struct column_range ranges[thread_count];
+struct column_range ranges[thread_count];
 
 __attribute__((target("avx512f,avx512bw,avx512vl,avx512vnni")))
-static int32_t simd_dot_packed(const int8_t *a_row, const int8_t *packed_column) {
+int32_t simd_dot_packed(const int8_t *a_row, const int8_t *packed_column) {
     __m512i a_low = _mm512_cvtepi8_epi16(_mm256_loadu_si256((const __m256i *)a_row));
     __m512i b_low = _mm512_cvtepi8_epi16(_mm256_loadu_si256((const __m256i *)packed_column));
     __m512i a_high = _mm512_cvtepi8_epi16(_mm256_loadu_si256((const __m256i *)(a_row + 32)));
@@ -42,7 +46,7 @@ static int32_t simd_dot_packed(const int8_t *a_row, const int8_t *packed_column)
     return _mm512_reduce_add_epi32(acc);
 }
 
-static void compute_range_packed(int64_t from, int64_t to) {
+void compute_range_packed(int64_t from, int64_t to) {
     int8_t *packed_column = aligned_alloc(64, (size_t)depth_k);
 
     if (packed_column == NULL) exit(1);
@@ -61,7 +65,7 @@ static void compute_range_packed(int64_t from, int64_t to) {
     free(packed_column);
 }
 
-static void *range_worker(void *arg) {
+void *range_worker(void *arg) {
     struct column_range *range = arg;
 
     compute_range_packed(range->from, range->to);

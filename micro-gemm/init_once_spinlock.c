@@ -16,26 +16,30 @@
 #include <pthread.h>
 #include <stdatomic.h>
 
-enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4,
-       alpha_scale = 2, beta_scale = 5 };
+#define rows_m 64
+#define cols_n 64
+#define depth_k 64
+#define thread_count 4
+#define alpha_scale 2
+#define beta_scale 5
 
-static int8_t input_a[rows_m * depth_k];
-static int8_t input_b[cols_n * depth_k];
-static int32_t output_c[rows_m * cols_n];
-static int32_t ref_c[rows_m * cols_n];
+int8_t input_a[rows_m * depth_k];
+int8_t input_b[cols_n * depth_k];
+int32_t output_c[rows_m * cols_n];
+int32_t ref_c[rows_m * cols_n];
 
-static int64_t scale_table[depth_k];
-static _Atomic int table_ready = 0;
-static volatile int table_spinlock = 0;
+int64_t scale_table[depth_k];
+_Atomic int table_ready = 0;
+volatile int table_spinlock = 0;
 
 struct column_range {
     int64_t from;
     int64_t to;
 };
 
-static struct column_range ranges[thread_count];
+struct column_range ranges[thread_count];
 
-static void fill_inputs(void) {
+void fill_inputs(void) {
     for (int64_t m = 0; m < rows_m; m++)
         for (int64_t k = 0; k < depth_k; k++)
             input_a[m * depth_k + k] = (int8_t)(((m * 7 + k * 3) % 11) - 5);
@@ -44,7 +48,7 @@ static void fill_inputs(void) {
             input_b[n * depth_k + k] = (int8_t)(((n * 5 + k * 3) % 13) - 6);
 }
 
-static void acquire_spinlock(void) {
+void acquire_spinlock(void) {
     while (!__sync_bool_compare_and_swap(&table_spinlock, 0, 1)) {
         while (table_spinlock) {
             /* spin */
@@ -52,11 +56,11 @@ static void acquire_spinlock(void) {
     }
 }
 
-static void release_spinlock(void) {
+void release_spinlock(void) {
     __sync_lock_release(&table_spinlock);
 }
 
-static void ensure_scale_table(void) {
+void ensure_scale_table(void) {
     if (atomic_load_explicit(&table_ready, memory_order_acquire)) return;
 
     acquire_spinlock();
@@ -67,7 +71,7 @@ static void ensure_scale_table(void) {
     release_spinlock();
 }
 
-static void *range_worker(void *arg) {
+void *range_worker(void *arg) {
     struct column_range *range = arg;
 
     ensure_scale_table();

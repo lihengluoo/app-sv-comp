@@ -17,12 +17,16 @@
 #include <string.h>
 #include <pthread.h>
 
-enum { rows_m = 64, cols_n = 64, depth_k = 64, alpha_scale = 2, beta_scale = 5 };
+#define rows_m 64
+#define cols_n 64
+#define depth_k 64
+#define alpha_scale 2
+#define beta_scale 5
 
-static int8_t input_a[rows_m * depth_k];
-static int8_t input_b[cols_n * depth_k];
+int8_t input_a[rows_m * depth_k];
+int8_t input_b[cols_n * depth_k];
 
-static void fill_inputs(void) {
+void fill_inputs(void) {
     for (int64_t m = 0; m < rows_m; m++)
         for (int64_t k = 0; k < depth_k; k++)
             input_a[m * depth_k + k] = (int8_t)(((m * 7 + k * 3) % 11) - 5);
@@ -33,7 +37,7 @@ static void fill_inputs(void) {
 
 /* The real gemm column: beta pre-scale (write), then alpha-accumulate
    (read-modify-write), on a caller-owned destination. */
-static void gemm_column(int32_t *dst, int64_t n, int32_t alpha, int32_t beta) {
+void gemm_column(int32_t *dst, int64_t n, int32_t alpha, int32_t beta) {
     for (int64_t m = 0; m < rows_m; m++)
         dst[m * cols_n + n] *= beta;
     for (int64_t m = 0; m < rows_m; m++) {
@@ -45,7 +49,7 @@ static void gemm_column(int32_t *dst, int64_t n, int32_t alpha, int32_t beta) {
     }
 }
 
-static void *gemm_worker(void *unused) {
+void *gemm_worker(void *unused) {
     int32_t local_c[rows_m * cols_n];
     int64_t checksum = 0;
 

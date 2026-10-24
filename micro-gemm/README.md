@@ -3,12 +3,15 @@
 Standalone C programs, one **dual pair** per concurrency pattern that
 [`applications/gemm`](../../../applications/gemm) relies on after the
 create/join simplification: a race-free `<pattern>.c` and its single
-minimal mutation `<pattern>_race.c`.  Every benchmark computes a true
-int8 GEMM — `C = alpha * A * B + beta * C`, A row-major, B
-column-major, beta pre-scale then alpha-accumulate per worker slice —
-checks the result against a serial reference, and prints
-`PASS <stem>`; the `_race.c` mutations print `DONE` because their
-results are nondeterministic.
+minimal mutation `<pattern>_race.c` (the minimal
+`partition-free.c` / `partition-race.c` pair names the two sides
+directly).  Except for that minimal pair, every benchmark checks its
+race-free side against a serial reference and prints `PASS <stem>`;
+the race mutations print `DONE` because their results are
+nondeterministic.  All pairs except the
+minimal partition pair compute a true int8 GEMM — `C = alpha * A * B +
+beta * C`, A row-major, B column-major, beta pre-scale then
+alpha-accumulate per worker slice.
 
 Scalar benchmarks run anywhere; the three `*_simd.c` pairs use the
 AVX-512 VNNI kernel scheme of the gemm 4509y backend (int8 widened to
@@ -41,6 +44,7 @@ Per-run logs land in `results/<stamp>/`.
 | `create_join_plain` | lone worker returns through join (`blas_server.c` exec_blas) | thread order baseline |
 | `job_descriptor_copy` | queue nodes written before create, privately copied by workers (`gemm_thread_n.c`) | immutable job descriptors |
 | `partition_columns` | balanced disjoint N-slices (`blas_quickdivide` loop) | memory partitioning |
+| `partition-free` / `partition-race` | bare create/store/join, one disjoint output index per worker | the partition obligation in isolation |
 | `partition_block_tails` | N range in column blocks with min-clamped ends, k in chunks with remainder tails (`level3.c`) | partition through nested block loops |
 | `caller_first_slice` | queue node 0 runs on the caller while workers run (`exec_blas`) | caller participation in the partition |
 | `join_indexed_prefix` | pthread_t array, indexed create/join, inline remainder on create failure (`exec_blas`) | indexed join over the successful prefix |
@@ -58,7 +62,8 @@ Per-run logs land in `results/<stamp>/`.
 | `worker_scratch_pack_simd` | private packed-column scratch feeding the VNNI kernel | SIMD + private packing |
 
 Mutations, one per pair: over-wide slices (partition, block tails,
-caller, dispatch, SIMD variants), post-create descriptor write, missing
+caller, dispatch, SIMD variants), a shared output index (minimal
+partition), post-create descriptor write, missing
 join, shared scratch, input write, unlocked or wrongly-scoped init,
 worker-republished count, shared TLS slot, overlapping calls.  Racing
 lines carry `// RACE!` comments.
@@ -89,7 +94,9 @@ list over `aligned_alloc` blocks.
 - Sizes stay tiny (`rows_m = 64`, `cols_n = 64`, `depth_k = 64`, four
   workers; `partition_block_tails` uses odd 61 sizes to force tails) so
   loops normalize to counted forms the compiler handles.
-- Inputs are static globals; only the partitioned output (and the
+- Sources use plain file-scope globals and `#define` sizes, with no
+  `static` or `enum`.
+- Inputs are file-scope globals; only the partitioned output (and the
   init-once table where the pattern needs it) is shared writable state.
 - Every benchmark exits 0; a native `FAIL` line means the program itself
   is wrong, not the pattern.

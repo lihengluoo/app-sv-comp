@@ -12,13 +12,20 @@
 #include <string.h>
 #include <pthread.h>
 
-enum { rows_m = 64, cols_n = 64, depth_k = 64, thread_count = 4,
-       alpha_scale = 2, beta_scale = 5,
-       mode_plain = 0, mode_overwrite = 1, mode_ksplit = 2, mode_msplit = 3 };
+#define rows_m 64
+#define cols_n 64
+#define depth_k 64
+#define thread_count 4
+#define alpha_scale 2
+#define beta_scale 5
+#define mode_plain 0
+#define mode_overwrite 1
+#define mode_ksplit 2
+#define mode_msplit 3
 
-static int8_t input_a[rows_m * depth_k];
-static int8_t input_b[cols_n * depth_k];
-static int32_t output_c[rows_m * cols_n];
+int8_t input_a[rows_m * depth_k];
+int8_t input_b[cols_n * depth_k];
+int32_t output_c[rows_m * cols_n];
 
 struct job_plan {
     int64_t column_from;
@@ -26,9 +33,9 @@ struct job_plan {
     int32_t mode;
 };
 
-static struct job_plan plans[thread_count];
+struct job_plan plans[thread_count];
 
-static int32_t dot_full(int64_t m, int64_t n) {
+int32_t dot_full(int64_t m, int64_t n) {
     int32_t sum = 0;
 
     for (int64_t k = 0; k < depth_k; k++)
@@ -36,7 +43,7 @@ static int32_t dot_full(int64_t m, int64_t n) {
     return sum;
 }
 
-static int32_t dot_k_split(int64_t m, int64_t n) {
+int32_t dot_k_split(int64_t m, int64_t n) {
     int32_t low = 0;
     int32_t high = 0;
 
@@ -47,7 +54,7 @@ static int32_t dot_k_split(int64_t m, int64_t n) {
     return low + high;
 }
 
-static void gemm_column_mode(int64_t n, int32_t mode) {
+void gemm_column_mode(int64_t n, int32_t mode) {
     switch (mode) {
     case mode_plain:
         for (int64_t m = 0; m < rows_m; m++)
@@ -71,7 +78,7 @@ static void gemm_column_mode(int64_t n, int32_t mode) {
     }
 }
 
-static void *plan_worker(void *arg) {
+void *plan_worker(void *arg) {
     struct job_plan *plan = arg;
     int64_t to = plan->column_to;
 

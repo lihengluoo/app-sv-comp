@@ -21,6 +21,7 @@ symbex_timeout_ms=20
 expect_drf="create_join_plain \
 job_descriptor_copy \
 partition_columns \
+partition-free \
 partition_block_tails \
 caller_first_slice \
 join_indexed_prefix \
@@ -40,6 +41,7 @@ tls_thread_slots"
 expect_race="create_join_plain_race \
 job_descriptor_copy_race \
 partition_columns_race \
+partition-race \
 partition_block_tails_race \
 caller_first_slice_race \
 join_indexed_prefix_race \

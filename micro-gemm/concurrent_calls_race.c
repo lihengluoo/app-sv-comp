@@ -12,12 +12,17 @@
 #include <string.h>
 #include <pthread.h>
 
-enum { rows_m = 64, cols_n = 64, depth_k = 64, parent_count = 2,
-       workers_per_parent = 2, alpha_scale = 2, beta_scale = 5 };
+#define rows_m 64
+#define cols_n 64
+#define depth_k 64
+#define parent_count 2
+#define workers_per_parent 2
+#define alpha_scale 2
+#define beta_scale 5
 
-static int8_t input_a[rows_m * depth_k];
-static int8_t input_b[cols_n * depth_k];
-static int32_t output_c[rows_m * cols_n];
+int8_t input_a[rows_m * depth_k];
+int8_t input_b[cols_n * depth_k];
+int32_t output_c[rows_m * cols_n];
 
 struct column_range {
     int64_t from;
@@ -29,9 +34,9 @@ struct call_group {
     pthread_t threads[workers_per_parent];
 };
 
-static struct call_group groups[parent_count];
+struct call_group groups[parent_count];
 
-static void *range_worker(void *arg) {
+void *range_worker(void *arg) {
     struct column_range *range = arg;
 
     for (int64_t n = range->from; n < range->to; n++) {
@@ -48,7 +53,7 @@ static void *range_worker(void *arg) {
     return NULL;
 }
 
-static void *parent_thread(void *arg) {
+void *parent_thread(void *arg) {
     struct call_group *group = arg;
     int64_t span = group->ranges[workers_per_parent - 1].to - group->ranges[0].from;
     int64_t next_from = group->ranges[0].from;
