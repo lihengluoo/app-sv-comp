@@ -1,11 +1,9 @@
-# Captured IR and per-run benchmark artifacts stay out of Git.
-/sv-comp/build/
-/sv-comp/results/
-/sv-comp/__pycache__/
+# Build artifacts and per-run benchmark output at any depth.
+build/
+build-*/
+cmake-build-*/
+results/
 
-/micro-gemm/build/
-/micro-gemm/results/
-/micro-gemm/__pycache__/
-
-/micro-kv/build/
-/micro-kv/results/
+# Local caches.
+.cache/
+__pycache__/
